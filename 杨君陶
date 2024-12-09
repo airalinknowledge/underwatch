@@ -1,0 +1,4 @@
+const bgm = new Audio('bgm.wav');
+bgm.volume = 1.0;
+bgm.loop = true;
+bgm.play();
