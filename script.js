@@ -107,8 +107,6 @@ function updateMushroomColors() {
 
 
 
-
-
 // 鼠标交互逻辑（调整逃逸速度）
 canvas.addEventListener('mousemove', (e) => {
     const mouseX = e.clientX;
@@ -141,17 +139,17 @@ canvas.addEventListener('mousemove', (e) => {
     });
 });
 
-// 创建涟漪效果（修复未定义问题）
+// 创建涟漪效果（位置和初始状态）
 function createRipple(x, y) {
     ripples.push({ x, y, radius: 0, opacity: 1 });
 }
 
-// 更新涟漪
+// 更新涟漪（减慢扩散速度，延长消失时间）
 function updateRipples() {
     ripples.forEach((r, index) => {
-        r.radius += 2; // 涟漪扩散速度
-        r.opacity -= 0.02; // 涟漪逐渐消失
-        if (r.opacity <= 0) ripples.splice(index, 1); // 移除消失的涟漪
+        r.radius += 1; // 扩散速度降低
+        r.opacity -= 0.005; // 衰减速度减慢
+        if (r.opacity <= 0) ripples.splice(index, 1); // 移除完全消失的涟漪
     });
 }
 
@@ -272,37 +270,51 @@ for (let i = 0; i < NUM_MUSHROOMS; i++) mushrooms.push(createMushroom());
 for (let i = 0; i < NUM_PARTICLES; i++) particles.push(createParticle());
 for (let i = 0; i < NUM_FOG_PARTICLES; i++) fogParticles.push(createFogParticle());
 
-// 添加 2-3 条新背景文本
+
+let currentTextIndex = 0; // 当前文本索引，用于按顺序取文本
+
+
+// 定期添加背景文本
+setInterval(addTexts, 8000);
+
+// 添加 2-3 条新背景文本（更新逻辑）
 function addTexts() {
-    const count = Math.floor(Math.random() * 2) + 2; // 随机 2-3 条
+    const count = Math.floor(Math.random() * 2) + 2; // 每次添加 2-3 条
     const screenHeight = canvas.height;
     const upperLimit = screenHeight * 0.4; // 上半区域
     const lowerLimit = screenHeight * 0.6; // 下半区域
 
     for (let i = 0; i < count; i++) {
-        const content = backgroundTexts[Math.floor(Math.random() * backgroundTexts.length)];
-        texts.push({
+        // 从数组中按顺序取文本内容
+        const content = backgroundTexts[currentTextIndex];
+        currentTextIndex = (currentTextIndex + 1) % backgroundTexts.length; // 循环取文本
+
+             texts.push({
             text: content,
             opacity: 0, // 初始透明度为 0，淡入效果
-            phase: 'fadeIn', // 当前阶段为淡入
-            x: Math.random() * canvas.width * 0.8,
-            y: i === 0
-                ? Math.random() * upperLimit
-                : Math.random() * (screenHeight - lowerLimit) + lowerLimit,
-            duration: 500,
+            phase: 'waiting', // 等待淡入
+            delay: i * 30, // 每句的淡入延迟时间，第一句不延迟
+            fadeInStart: 0, // 记录何时开始淡入
             fadeInDuration: 100,
-            fadeOutDuration: 100
+            fadeOutDuration: 100,
+            x: Math.random() * canvas.width * 0.8 + canvas.width * 0.1, // 水平随机分布，避免贴边
+            y: i === 0
+                ? Math.random() * upperLimit // 上文位置
+                : Math.random() * (screenHeight - lowerLimit) + lowerLimit, // 下文位置
+            duration: 500 // 停留时间
         });
     }
 }
 
-// 定期添加背景文本
-setInterval(addTexts, 8000);
-
-// 更新背景文本
+// 更新背景文本逻辑
 function updateTexts() {
     texts.forEach((t, index) => {
-        if (t.phase === 'fadeIn') {
+        if (t.phase === 'waiting') {
+            t.fadeInStart++;
+            if (t.fadeInStart >= t.delay) {
+                t.phase = 'fadeIn'; // 延迟时间到后进入淡入阶段
+            }
+        } else if (t.phase === 'fadeIn') {
             t.opacity += 1 / t.fadeInDuration;
             if (t.opacity >= 1) {
                 t.opacity = 1;
@@ -310,26 +322,28 @@ function updateTexts() {
             }
         } else if (t.phase === 'visible') {
             t.duration--;
-            if (t.duration <= t.fadeOutDuration) {
+            if (t.duration <= 0) {
                 t.phase = 'fadeOut';
             }
         } else if (t.phase === 'fadeOut') {
             t.opacity -= 1 / t.fadeOutDuration;
             if (t.opacity <= 0) {
-                texts.splice(index, 1);
+                texts.splice(index, 1); // 移除完全消失的文本
             }
         }
     });
 }
 
-// 绘制背景文本
+// 绘制背景文本逻辑（保持逻辑）
 function drawTexts() {
     ctx.font = '16px Courier New';
     texts.forEach(t => {
-        ctx.fillStyle = `rgba(255, 255, 255, ${t.opacity})`;
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, t.opacity)})`; // 防止透明度为负
         ctx.fillText(t.text, t.x, t.y);
     });
 }
+
+
 
 // 更新粒子（增强深度感知）
 function updateParticles() {
@@ -379,8 +393,9 @@ function drawFogParticles() {
         ctx.closePath();
     });
 }
-// 动画循环
+
 function animate() {
+    // 清空画布
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // 更新并绘制雾和粒子
@@ -391,23 +406,24 @@ function animate() {
 
     // 绘制鼠标轨迹和涟漪
     drawMouseTrail();
- 
-
-
-    // 更新背景文本
-    updateTexts();
-    drawTexts();
+    updateRipples();
+    drawRipples();
 
     // 更新蘑菇
     updateMushroomColors();
     updateMushrooms();
     drawMushrooms();
 
+    // 更新背景文本
+    updateTexts();
+    drawTexts(); // 确保文本在最后绘制
+
     // 动态模糊
     elapsedTime++;
     const blurAmount = Math.min(3 * (elapsedTime / (60 * 420)), 30);
     canvas.style.filter = `blur(${blurAmount}px)`;
 
+    // 请求下一帧动画
     requestAnimationFrame(animate);
 }
 
