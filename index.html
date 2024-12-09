@@ -8,7 +8,7 @@
         body {
             margin: 0;
             overflow: hidden;
-            background-color: #0a0a0a;
+            background: linear-gradient(120deg, #2c3e50, #4ca1af); /* Subtle gradient */
         }
         canvas {
             display: block;
@@ -16,6 +16,10 @@
     </style>
 </head>
 <body>
+    <audio id="backgroundAudio" loop>
+        <source src="background.mp3" type="audio/mp3">
+        Your browser does not support the audio tag.
+    </audio>
     <canvas id="mushroomCanvas"></canvas>
     <script src="script.js"></script>
 </body>
