@@ -55,9 +55,98 @@ const backgroundTexts = [
     "A humble fungus, yet a profound testament to the unyielding, ungovernable essence of life.",
     "In my silent, steadfast growth, I embody the refusal to be constrained,",
     "the celebration of resilience, and the relentless pursuit of existence in its most unadulterated form."
-
-    
 ];
+  
+
+
+
+// 定义监控文本和队列
+let monitoringText = ""; // 当前显示的文本
+let monitoringQueue = []; // 待显示的文本队列
+
+// 更新监控文本，从队列中逐字追加
+function updateMonitoringText() {
+    if (monitoringQueue.length > 0) {
+        monitoringText += monitoringQueue.shift(); // 从队列中取出一个字符
+    }
+}
+
+// 绘制监控文本
+function drawMonitoringText() {
+    ctx.font = '14px Courier New'; // 打字机样式
+    const lines = monitoringText.split('\n'); // 分行显示
+    lines.forEach((line, index) => {
+        // 区分颜色：反监控信息为暗黄色，其余为浅灰色
+        const isAntiMonitoring = antiMonitoringSentences.some(sentence => line.includes(sentence));
+        ctx.fillStyle = isAntiMonitoring ? 'rgba(200, 180, 80, 1)' : 'rgba(200, 200, 200, 1)';
+        ctx.fillText(line, 10, 20 + index * 18); // 左上角对齐，每行间隔 18px
+    });
+}
+
+// 初始化监控队列
+function initMonitoringQueue() {
+    const screenWidth = window.screen.width;
+    const screenHeight = window.screen.height;
+    const currentTime = new Date().toLocaleTimeString();
+
+    monitoringQueue.push(...`Screen resolution: ${screenWidth}x${screenHeight}\n`.split(""));
+    monitoringQueue.push(...`Access time: ${currentTime}\n`.split(""));
+
+    // 如果获取到地理位置信息，加入队列
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(position => {
+            const { latitude, longitude } = position.coords;
+            monitoringQueue.push(...`Location: ${latitude.toFixed(2)}, ${longitude.toFixed(2)}\n`.split(""));
+        }, () => {
+            monitoringQueue.push(...`Location: Unable to access\n`.split(""));
+        });
+    } else {
+        monitoringQueue.push(...`Location: Not supported\n`.split(""));
+    }
+}
+
+// 插入随机反监控信息
+const antiMonitoringSentences = [
+    "We can see you at (mouse location), right?",
+    "We know you are trying to capture us, to expel us...",
+    "You are still here, aren't you?",
+    "Why do you insist on staying here?",
+    "We know your location, we know your time, but you don’t know us.",
+    "Everything is becoming blurry, isn’t it?",
+    "We are many... you seem to be only one.",
+    "This place is about to collapse.",
+    "You won’t find us anymore."
+];
+
+function generateAntiMonitoringMessage() {
+    const randomIndex = Math.floor(Math.random() * antiMonitoringSentences.length);
+    let message = antiMonitoringSentences[randomIndex];
+
+    // 如果句子包含鼠标位置占位符，替换实际位置
+    if (message.includes("(mouse location)") && mousePositions.length > 0) {
+        const last = mousePositions[mousePositions.length - 1];
+        message = message.replace("(mouse location)", `(${last.x}, ${last.y})`);
+    }
+
+    monitoringQueue.push(...message.split(""));
+    monitoringQueue.push("\n"); // 添加换行符
+}
+
+// 鼠标轨迹记录逻辑
+const mousePositions = [];
+canvas.addEventListener('mousemove', (e) => {
+    mousePositions.push({ x: e.clientX, y: e.clientY });
+    if (mousePositions.length > 50) mousePositions.shift(); // 限制记录数量
+});
+
+// 每隔 12 秒插入随机反监控信息
+setInterval(generateAntiMonitoringMessage, 12000);
+
+// 初始化监控队列
+initMonitoringQueue();
+
+
+
 
 let elapsedTime = 0; // 页面停留时间（以帧为单位）
 
@@ -293,7 +382,7 @@ function addTexts() {
             text: content,
             opacity: 0, // 初始透明度为 0，淡入效果
             phase: 'waiting', // 等待淡入
-            delay: i * 30, // 每句的淡入延迟时间，第一句不延迟
+            delay: i * 80, // 每句的淡入延迟时间，第一句不延迟
             fadeInStart: 0, // 记录何时开始淡入
             fadeInDuration: 100,
             fadeOutDuration: 100,
@@ -334,14 +423,15 @@ function updateTexts() {
     });
 }
 
-// 绘制背景文本逻辑（保持逻辑）
+// 绘制背景文本逻辑（蘑菇文本）
 function drawTexts() {
-    ctx.font = '16px Courier New';
+    ctx.font = '16px Courier New'; // 替换为打字机风格字体
     texts.forEach(t => {
-        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, t.opacity)})`; // 防止透明度为负
+        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, t.opacity)})`;
         ctx.fillText(t.text, t.x, t.y);
     });
 }
+
 
 
 
@@ -394,9 +484,22 @@ function drawFogParticles() {
     });
 }
 
+let backgroundOpacity = 0; // 初始背景透明度
+
+function drawDimmingBackground() {
+    ctx.fillStyle = `rgba(0, 0, 0, ${backgroundOpacity})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 背景透明度逐渐增加
+    backgroundOpacity = Math.min(backgroundOpacity + 0.0002, 0.8); // 最大透明度为 0.8
+}
+
+
 function animate() {
-    // 清空画布
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 绘制背景逐渐变暗效果
+    drawDimmingBackground();
 
     // 更新并绘制雾和粒子
     updateFogParticles();
@@ -414,18 +517,23 @@ function animate() {
     updateMushrooms();
     drawMushrooms();
 
-    // 更新背景文本
-    updateTexts();
-    drawTexts(); // 确保文本在最后绘制
+    // 最后绘制所有文本，确保在图形之上
+    updateMonitoringText(); // 更新监控文本
+    drawMonitoringText();   // 绘制监控文本
+    updateTexts();          // 更新蘑菇文案
+    drawTexts();            // 绘制蘑菇文案
 
     // 动态模糊
     elapsedTime++;
-    const blurAmount = Math.min(3 * (elapsedTime / (60 * 420)), 30);
+    const blurAmount = Math.min(6 * (elapsedTime / (60 * 420)), 30);
     canvas.style.filter = `blur(${blurAmount}px)`;
 
-    // 请求下一帧动画
     requestAnimationFrame(animate);
 }
 
 // 启动动画
 animate();
+
+
+
+
