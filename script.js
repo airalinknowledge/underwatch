@@ -61,11 +61,8 @@ const backgroundTexts = [
 // 创建背景音乐
 const bgm = new Audio('bgm.wav'); // 替换为实际背景音乐文件路径
 bgm.loop = true; // 循环播放
-bgm.volume = 0.6; // 设置音量为最大值（60%）
+bgm.volume = 1; // 设置音量为最大值（60%）
 bgm.play(); // 开始播放
-document.body.addEventListener('click', () => {
-    bgm.play();
-});
 
 
 
@@ -538,8 +535,6 @@ function animate() {
     updateTexts();          // 更新蘑菇文案
     drawTexts();            // 绘制蘑菇文案
 
-    // 调整耳语音频音量
-    adjustWhisperVolume();
 
     // 动态模糊
     elapsedTime++;
