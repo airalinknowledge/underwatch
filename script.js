@@ -11,6 +11,8 @@ const mushrooms = [];
 const particles = []; // 粒子数组
 const fogParticles = []; // 雾粒子数组
 const texts = []; // 文本存储
+const mouseTrail = [];//鼠标轨迹记录
+const ripples = [];//涟漪效果
 const backgroundTexts = [
     "In the hushed sanctuaries beneath the ancient canopies...",
     "I, the humble mushroom, emerge...",
@@ -76,29 +78,81 @@ function updateMushroomColors() {
 
 
 
-// 鼠标交互逻辑
+// 鼠标交互逻辑（调整逃逸速度）
 canvas.addEventListener('mousemove', (e) => {
     const mouseX = e.clientX;
     const mouseY = e.clientY;
+
+ // 记录鼠标轨迹
+    mouseTrail.push({ x: mouseX, y: mouseY, opacity: 1 });
+    if (mouseTrail.length > 50) mouseTrail.shift(); // 限制轨迹点数量
 
     mushrooms.forEach(m => {
         const dx = m.x - mouseX;
         const dy = m.y - mouseY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // 当鼠标靠近蘑菇时触发逃逸逻辑
+        // 动态调整逃逸速度，进一步降低速度
+        const escapeFactor = 0.05; // 固定逃逸速度因子（更慢）
+
         if (distance < 50 && !m.triggered) {
-            m.triggered = true; // 标记为触发状态
+            m.triggered = true;
             m.targetColor = { r: 100, g: 50, b: 0 }; // 颜色变暗
-            m.recoveryTimer = 300; // 设置恢复计时器
+            m.recoveryTimer = 300;
 
             // 根据鼠标位置计算逃逸方向和速度
-            const escapeFactor = 2 / distance; // 逃逸速度因子
             m.velocityX = dx * escapeFactor;
             m.velocityY = dy * escapeFactor;
+
+            // 创建涟漪
+            createRipple(mouseX, mouseY);
         }
     });
 });
+
+// 创建涟漪效果（修复未定义问题）
+function createRipple(x, y) {
+    ripples.push({ x, y, radius: 0, opacity: 1 });
+}
+
+// 更新涟漪
+function updateRipples() {
+    ripples.forEach((r, index) => {
+        r.radius += 2; // 涟漪扩散速度
+        r.opacity -= 0.02; // 涟漪逐渐消失
+        if (r.opacity <= 0) ripples.splice(index, 1); // 移除消失的涟漪
+    });
+}
+
+// 绘制涟漪
+function drawRipples() {
+    ripples.forEach(r => {
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 255, 255, ${r.opacity})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.closePath();
+    });
+}
+
+// 绘制鼠标轨迹（去除颤抖）
+function drawMouseTrail() {
+    mouseTrail.forEach((point, index) => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${point.opacity})`;
+        ctx.fill();
+        ctx.closePath();
+
+        // 逐渐减少轨迹透明度
+        mouseTrail[index].opacity -= 0.015; // 调整消退速度
+        if (mouseTrail[index].opacity <= 0) mouseTrail.shift();
+    });
+}
+
+
+
 
 // 更新蘑菇状态
 function updateMushrooms() {
@@ -135,12 +189,23 @@ function updateMushrooms() {
 
 
 
-// 绘制蘑菇
+// 绘制蘑菇（调整呼吸效果的周期）
 function drawMushrooms() {
     mushrooms.forEach(m => {
+        // 绘制阴影
+        ctx.beginPath();
+        ctx.arc(m.x + 5, m.y + 5, m.radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0, 0, 0, 0.2)`; // 阴影颜色
+        ctx.fill();
+        ctx.closePath();
+
+        // 绘制蘑菇
         ctx.beginPath();
         ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgb(${Math.round(m.currentColor.r)}, ${Math.round(m.currentColor.g)}, ${Math.round(m.currentColor.b)})`;
+
+        // 调整辉光的变化速度（呼吸效果）
+        const glow = Math.sin(elapsedTime / 150) * 10 + 30; // 调整为更慢的周期
+        ctx.fillStyle = `rgb(${Math.round(m.currentColor.r + glow)}, ${Math.round(m.currentColor.g + glow)}, ${Math.round(m.currentColor.b)})`;
         ctx.fill();
         ctx.closePath();
     });
@@ -235,7 +300,7 @@ function drawTexts() {
     });
 }
 
-// 更新粒子
+// 更新粒子（增强深度感知）
 function updateParticles() {
     particles.forEach(p => {
         p.x += p.velocityX;
@@ -248,12 +313,13 @@ function updateParticles() {
     });
 }
 
-// 绘制粒子
+// 绘制粒子（增强深度感知）
 function drawParticles() {
     particles.forEach(p => {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+        const depthEffect = Math.sin((p.x + p.y + elapsedTime) / 100) * 0.2 + 0.8; // 动态透明度变化
+        ctx.arc(p.x, p.y, p.size * depthEffect, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity * depthEffect})`;
         ctx.fill();
         ctx.closePath();
     });
@@ -282,7 +348,6 @@ function drawFogParticles() {
         ctx.closePath();
     });
 }
-
 // 动画循环
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -292,6 +357,11 @@ function animate() {
     drawFogParticles();
     updateParticles();
     drawParticles();
+
+    // 绘制鼠标轨迹和涟漪
+    drawMouseTrail();
+ 
+
 
     // 更新背景文本
     updateTexts();
