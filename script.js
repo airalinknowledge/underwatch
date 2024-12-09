@@ -58,6 +58,11 @@ const backgroundTexts = [
 ];
   
 
+// 创建背景音乐
+const bgm = new Audio('bgm.wav'); // 替换为实际背景音乐文件路径
+bgm.loop = true; // 循环播放
+bgm.volume = 0.6; // 设置音量为最大值（60%）
+bgm.play(); // 开始播放
 
 
 // 定义监控文本和队列
