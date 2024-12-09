@@ -495,6 +495,53 @@ function drawDimmingBackground() {
 }
 
 
+
+// 创建背景耳语音频
+const whisperAudio = new Audio('background.mp3'); // 替换为你的音频文件路径
+whisperAudio.loop = true; // 循环播放
+whisperAudio.volume = 0.5; // 初始音量
+whisperAudio.play(); // 开始播放
+let isWhisperFading = false; // 标记是否正在淡出音量
+let targetVolume = 0.5; // 默认音量目标
+
+canvas.addEventListener('mousemove', (e) => {
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
+
+    let mouseNearMushroom = false;
+
+    mushrooms.forEach(m => {
+        const dx = m.x - mouseX;
+        const dy = m.y - mouseY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // 当鼠标靠近蘑菇时
+        if (distance < 50) {
+            mouseNearMushroom = true;
+        }
+    });
+
+    // 如果靠近蘑菇，则减弱音量
+    if (mouseNearMushroom && !isWhisperFading) {
+        isWhisperFading = true;
+        targetVolume = 0.1; // 音量减弱到 0.1
+    } else if (!mouseNearMushroom && isWhisperFading) {
+        isWhisperFading = false;
+        targetVolume = 0.5; // 音量恢复到初始值
+    }
+});
+function adjustWhisperVolume() {
+    const currentVolume = whisperAudio.volume;
+    if (Math.abs(currentVolume - targetVolume) > 0.01) {
+        whisperAudio.volume += (targetVolume - currentVolume) * 0.05; // 平滑过渡
+    } else {
+        whisperAudio.volume = targetVolume; // 防止过渡结束后音量漂移
+    }
+}
+
+
+
+
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -523,9 +570,12 @@ function animate() {
     updateTexts();          // 更新蘑菇文案
     drawTexts();            // 绘制蘑菇文案
 
+    // 调整耳语音频音量
+    adjustWhisperVolume();
+
     // 动态模糊
     elapsedTime++;
-    const blurAmount = Math.min(6 * (elapsedTime / (60 * 420)), 30);
+    const blurAmount = Math.min(3 * (elapsedTime / (60 * 420)), 30);
     canvas.style.filter = `blur(${blurAmount}px)`;
 
     requestAnimationFrame(animate);
