@@ -6,8 +6,8 @@ canvas.height = window.innerHeight;
 
 const NUM_MUSHROOMS = 50;
 const mushrooms = [];
-const particles = []; // Particle system for triggered effects
-const backgroundParticles = []; // Background firefly particles
+const particles = []; // Trigger particle system
+const backgroundParticles = []; // Firefly-like background particles
 const colors = [
     { r: 200, g: 150, b: 100 }, // Soft brown-orange
     { r: 100, g: 180, b: 200 }, // Soft cyan
@@ -23,18 +23,18 @@ for (let i = 0; i < NUM_MUSHROOMS; i++) {
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
         radius: 20 + Math.random() * 10,
+        velocityX: 0, // Velocity for smooth movement
+        velocityY: 0,
         currentColor: { ...color },
         originalColor: { ...color }, // Store original color for recovery
         targetColor: { ...color },
-        velocityX: 0, // Velocity for smooth movement
-        velocityY: 0,
         triggered: false,
         recoveryTimer: 0,
         glowOpacity: Math.random() * 0.5 + 0.5 // Random initial glow
     });
 }
 
-// Initialize background particles (fireflies)
+// Initialize fireflies
 for (let i = 0; i < 100; i++) {
     backgroundParticles.push({
         x: Math.random() * canvas.width,
@@ -51,7 +51,7 @@ function lerp(start, end, t) {
     return start + (end - start) * t;
 }
 
-// Smoothly update mushroom colors
+// Update mushroom colors
 function updateMushroomColors() {
     mushrooms.forEach(m => {
         const speed = 0.02;
@@ -61,7 +61,7 @@ function updateMushroomColors() {
     });
 }
 
-// Update mushroom positions and glow opacity
+// Update mushroom positions and glow
 function updateMushrooms() {
     mushrooms.forEach(m => {
         m.x += m.velocityX;
@@ -79,22 +79,22 @@ function updateMushrooms() {
             m.targetColor = { ...m.originalColor };
         }
 
-        // Smooth glow effect
+        // Glow smoothing
         m.glowOpacity = lerp(m.glowOpacity, 0.8, 0.01);
     });
 }
 
-// Draw mushrooms with glow effect
+// Draw mushrooms with glow
 function drawMushrooms() {
     mushrooms.forEach(m => {
-        // Draw glow
+        // Glow effect
         ctx.beginPath();
         ctx.arc(m.x, m.y, m.radius * 1.5, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${m.currentColor.r}, ${m.currentColor.g}, ${m.currentColor.b}, ${m.glowOpacity * 0.3})`;
         ctx.fill();
         ctx.closePath();
 
-        // Draw mushroom
+        // Mushroom body
         ctx.beginPath();
         ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
         ctx.fillStyle = `rgb(${Math.round(m.currentColor.r)}, ${Math.round(m.currentColor.g)}, ${Math.round(m.currentColor.b)})`;
@@ -103,7 +103,7 @@ function drawMushrooms() {
     });
 }
 
-// Handle mouse interactions
+// Mouse interaction
 canvas.addEventListener('mousemove', (e) => {
     const mouseX = e.clientX;
     const mouseY = e.clientY;
@@ -116,14 +116,14 @@ canvas.addEventListener('mousemove', (e) => {
         if (distance < 50 && !m.triggered) { // Trigger condition
             m.triggered = true;
             m.targetColor = { r: 100, g: 50, b: 0 }; // Dim color
-            m.recoveryTimer = 200; // Escape duration
+            m.recoveryTimer = 200; // Recovery duration
 
-            // Set velocity for smooth escape
+            // Set escape velocity
             const escapeFactor = 2 / distance; // Adjust escape factor
             m.velocityX = dx * escapeFactor;
             m.velocityY = dy * escapeFactor;
 
-            // Add particle effects
+            // Add particle effect
             for (let i = 0; i < 20; i++) {
                 particles.push({
                     x: m.x,
@@ -143,10 +143,63 @@ function updateParticles() {
     particles.forEach((p, index) => {
         p.x += p.velocityX;
         p.y += p.velocityY;
-        p.opacity -= 0.02; // Fade out particles
+        p.opacity -= 0.02; // Fade out
 
         if (p.opacity <= 0) particles.splice(index, 1); // Remove faded particles
     });
 }
 
-function drawParticle
+function drawParticles() {
+    particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+        ctx.fill();
+        ctx.closePath();
+    });
+}
+
+// Update and draw fireflies
+function updateFireflies() {
+    backgroundParticles.forEach(f => {
+        f.x += f.velocityX;
+        f.y += f.velocityY;
+
+        if (f.x < 0) f.x = canvas.width;
+        if (f.x > canvas.width) f.x = 0;
+        if (f.y < 0) f.y = canvas.height;
+        if (f.y > canvas.height) f.y = 0;
+    });
+}
+
+function drawFireflies() {
+    backgroundParticles.forEach(f => {
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${f.opacity})`;
+        ctx.fill();
+        ctx.closePath();
+    });
+}
+
+// Main animation loop
+function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw fireflies
+    updateFireflies();
+    drawFireflies();
+
+    // Draw mushrooms
+    updateMushrooms();
+    drawMushrooms();
+
+    // Draw particles
+    updateParticles();
+    drawParticles();
+
+    requestAnimationFrame(animate);
+}
+
+// Start animation
+animate();
