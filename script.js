@@ -22,29 +22,32 @@ for (let i = 0; i < NUM_MUSHROOMS; i++) {
     });
 }
 
-// Linear interpolation function
-function lerp(start, end, t) {
+// Smoothstep function for easing
+function ease(start, end, t) {
+    t = t * t * (3 - 2 * t);
     return start + (end - start) * t;
 }
 
-// Update colors
+// Update colors smoothly
 function updateMushroomColors() {
     mushrooms.forEach(m => {
-        m.currentColor.r = lerp(m.currentColor.r, m.targetColor.r, 0.02);
-        m.currentColor.g = lerp(m.currentColor.g, m.targetColor.g, 0.02);
-        m.currentColor.b = lerp(m.currentColor.b, m.targetColor.b, 0.02);
+        const speed = 0.02;
+        m.currentColor.r = ease(m.currentColor.r, m.targetColor.r, speed);
+        m.currentColor.g = ease(m.currentColor.g, m.targetColor.g, speed);
+        m.currentColor.b = ease(m.currentColor.b, m.targetColor.b, speed);
     });
 }
 
-// Update positions
+// Update positions smoothly
 function updateMushroomPositions() {
     mushrooms.forEach(m => {
-        m.x = lerp(m.x, m.targetX, 0.02);
-        m.y = lerp(m.y, m.targetY, 0.02);
+        const speed = 0.02;
+        m.x = ease(m.x, m.targetX, speed);
+        m.y = ease(m.y, m.targetY, speed);
     });
 }
 
-// Draw mushrooms
+// Draw mushrooms on canvas
 function drawMushrooms() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     mushrooms.forEach(m => {
