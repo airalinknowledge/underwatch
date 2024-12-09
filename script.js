@@ -9,8 +9,6 @@ canvas.height = window.innerHeight;
 
 const NUM_MUSHROOMS = 50;
 const mushrooms = [];
-const particles = [];
-const messages = []; // 文本存储
 const colors = [
     { r: 180, g: 140, b: 100 },
     { r: 120, g: 180, b: 160 },
@@ -29,8 +27,8 @@ function createMushroom(x, y) {
         y: y || Math.random() * canvas.height,
         velocityX: 0,
         velocityY: 0,
-        radius: 0,
-        targetRadius: 20 + Math.random() * 10,
+        radius: 0, // 从小开始生长
+        targetRadius: 20 + Math.random() * 10, // 最终半径
         currentColor: { ...color },
         targetColor: { ...color },
         triggered: false,
@@ -51,13 +49,18 @@ function lerp(start, end, t) {
 }
 
 function updateMushrooms() {
-    mushrooms.forEach(m => {
+    mushrooms.forEach((m, index) => {
+        // 生长动画
         m.radius = lerp(m.radius, m.targetRadius, 0.05);
+
         m.x += m.velocityX;
         m.y += m.velocityY;
+
+        // 慢慢减速
         m.velocityX *= 0.95;
         m.velocityY *= 0.95;
 
+        // 恢复逻辑
         if (m.triggered && m.recoveryTimer > 0) {
             m.recoveryTimer--;
         } else if (m.triggered && m.recoveryTimer === 0) {
@@ -66,61 +69,54 @@ function updateMushrooms() {
             audio.volume = lerp(audio.volume, 0.8, 0.05);
         }
 
-        if (Math.random() < 0.02) generateGlowParticles(m);
+        // 如果蘑菇离开屏幕，重新生成
+        if (m.x < -50 || m.x > canvas.width + 50 || m.y < -50 || m.y > canvas.height + 50) {
+            mushrooms.splice(index, 1);
+            mushrooms.push(createMushroom());
+        }
     });
 }
 
 function drawMushrooms() {
     mushrooms.forEach(m => {
-        particles.forEach(p => {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
-            ctx.fill();
-            ctx.closePath();
-        });
-
         ctx.beginPath();
         ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgb(${m.currentColor.r}, ${m.currentColor.g}, ${m.currentColor.b})`;
+        ctx.fillStyle = `rgb(${Math.round(m.currentColor.r)}, ${Math.round(m.currentColor.g)}, ${Math.round(m.currentColor.b)})`;
         ctx.fill();
         ctx.closePath();
     });
 }
 
-function updateMessages() {
-    messages.forEach((msg, index) => {
-        msg.y += msg.velocityY;
-        msg.opacity -= 0.01;
-        if (msg.opacity <= 0) messages.splice(index, 1);
-    });
-}
+canvas.addEventListener('mousemove', (e) => {
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
 
-function drawMessages() {
-    ctx.font = '16px Arial';
-    messages.forEach(msg => {
-        ctx.fillStyle = `rgba(255, 255, 255, ${msg.opacity})`;
-        ctx.fillText(msg.text, msg.x, msg.y);
+    mushrooms.forEach(m => {
+        const dx = m.x - mouseX;
+        const dy = m.y - mouseY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < 50 && !m.triggered) {
+            m.triggered = true;
+            m.targetColor = { r: 100, g: 50, b: 0 }; // 触发时变暗
+            m.recoveryTimer = 200;
+
+            // 设置逃逸速度
+            const escapeFactor = 2 / distance;
+            m.velocityX = dx * escapeFactor;
+            m.velocityY = dy * escapeFactor;
+
+            // 音量降低
+            audio.volume = lerp(audio.volume, 0.2, 0.1);
+        }
     });
-}
+});
 
 function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     updateMushrooms();
     drawMushrooms();
-    updateMessages();
-    drawMessages();
     requestAnimationFrame(animate);
 }
 
 animate();
-setInterval(() => {
-    const whispers = [
-        'Escape the gaze.',
-        'Resilience in shadows.',
-        'Hiding is thriving.',
-        'The forest breathes.',
-        'In silence, strength.'
-    ];
-    addMessage(whispers[Math.floor(Math.random() * whispers.length)]);
-}, 3000);
