@@ -12,42 +12,35 @@ for (let i = 0; i < NUM_MUSHROOMS; i++) {
     mushrooms.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        targetX: Math.random() * canvas.width,
-        targetY: Math.random() * canvas.height,
+        originalX: null, // Store initial position
+        originalY: null, // Store initial position
         radius: 20 + Math.random() * 10,
         currentColor: { r: 255, g: 165, b: 0 },
         targetColor: { r: 255, g: 165, b: 0 },
         triggered: false,
+        escapeSpeed: Math.random() * 2 + 1, // Random escape speed
         recoveryTimer: 0
     });
+    mushrooms[mushrooms.length - 1].originalX = mushrooms[mushrooms.length - 1].x;
+    mushrooms[mushrooms.length - 1].originalY = mushrooms[mushrooms.length - 1].y;
 }
 
-// Smoothstep function for easing
-function ease(start, end, t) {
-    t = t * t * (3 - 2 * t);
+// Linear interpolation function
+function lerp(start, end, t) {
     return start + (end - start) * t;
 }
 
-// Update colors smoothly
+// Smoothly update colors
 function updateMushroomColors() {
     mushrooms.forEach(m => {
         const speed = 0.02;
-        m.currentColor.r = ease(m.currentColor.r, m.targetColor.r, speed);
-        m.currentColor.g = ease(m.currentColor.g, m.targetColor.g, speed);
-        m.currentColor.b = ease(m.currentColor.b, m.targetColor.b, speed);
+        m.currentColor.r = lerp(m.currentColor.r, m.targetColor.r, speed);
+        m.currentColor.g = lerp(m.currentColor.g, m.targetColor.g, speed);
+        m.currentColor.b = lerp(m.currentColor.b, m.targetColor.b, speed);
     });
 }
 
-// Update positions smoothly
-function updateMushroomPositions() {
-    mushrooms.forEach(m => {
-        const speed = 0.02;
-        m.x = ease(m.x, m.targetX, speed);
-        m.y = ease(m.y, m.targetY, speed);
-    });
-}
-
-// Draw mushrooms on canvas
+// Draw mushrooms
 function drawMushrooms() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     mushrooms.forEach(m => {
@@ -59,36 +52,69 @@ function drawMushrooms() {
     });
 }
 
-// Randomize target colors
-function randomizeTargetColors() {
-    mushrooms.forEach(m => {
-        m.targetColor = {
-            r: Math.random() * 255,
-            g: Math.random() * 255,
-            b: Math.random() * 255
-        };
-    });
-}
+// Handle mouse interactions
+canvas.addEventListener('mousemove', (e) => {
+    const mouseX = e.clientX;
+    const mouseY = e.clientY;
 
-// Randomize target positions
-function randomizeTargetPositions() {
     mushrooms.forEach(m => {
-        m.targetX = Math.random() * canvas.width;
-        m.targetY = Math.random() * canvas.height;
+        const dx = m.x - mouseX;
+        const dy = m.y - mouseY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < 50 && !m.triggered) { // Trigger condition
+            m.triggered = true;
+            m.targetColor = { r: 100, g: 50, b: 0 }; // Dim color
+            m.recoveryTimer = 200; // Escape duration
+
+            // Neighboring mushrooms
+            mushrooms.forEach(neighbor => {
+                const nx = neighbor.x - m.x;
+                const ny = neighbor.y - m.y;
+                const neighborDistance = Math.sqrt(nx * nx + ny * ny);
+
+                if (neighborDistance < 150 && !neighbor.triggered) {
+                    neighbor.triggered = true;
+                    neighbor.targetColor = { r: 150, g: 100, b: 50 }; // Slightly dimmer
+                    neighbor.recoveryTimer = 200;
+
+                    // Escape direction for neighbors
+                    const escapeFactor = 1.5 / neighborDistance;
+                    neighbor.x += nx * neighbor.escapeSpeed * escapeFactor;
+                    neighbor.y += ny * neighbor.escapeSpeed * escapeFactor;
+                }
+            });
+
+            // Escape direction for triggered mushroom
+            const escapeFactor = 2 / distance; // Adjust escape factor
+            m.x += dx * m.escapeSpeed * escapeFactor;
+            m.y += dy * m.escapeSpeed * escapeFactor;
+        }
+    });
+});
+
+// Recover mushrooms gradually
+function recoverMushrooms() {
+    mushrooms.forEach(m => {
+        if (m.triggered && m.recoveryTimer > 0) {
+            m.recoveryTimer--;
+        } else if (m.triggered && m.recoveryTimer === 0) {
+            // Restore original state
+            m.triggered = false;
+            m.targetColor = { r: 255, g: 165, b: 0 };
+            m.x = lerp(m.x, m.originalX, 0.1); // Gradually return
+            m.y = lerp(m.y, m.originalY, 0.1); // Gradually return
+        }
     });
 }
 
 // Animation loop
 function animate() {
     updateMushroomColors();
-    updateMushroomPositions();
+    recoverMushrooms();
     drawMushrooms();
     requestAnimationFrame(animate);
 }
-
-// Set intervals for randomization
-setInterval(randomizeTargetColors, 5000);
-setInterval(randomizeTargetPositions, 5000);
 
 // Start animation
 animate();
