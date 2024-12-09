@@ -538,7 +538,7 @@ function animate() {
 
     // 动态模糊
     elapsedTime++;
-    const blurAmount = Math.min(3 * (elapsedTime / (60 * 420)), 30);
+    const blurAmount = Math.min(5 * (elapsedTime / (60 * 420)), 30);
     canvas.style.filter = `blur(${blurAmount}px)`;
 
     requestAnimationFrame(animate);
