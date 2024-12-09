@@ -6,14 +6,17 @@ canvas.height = window.innerHeight;
 
 const NUM_MUSHROOMS = 50;
 const mushrooms = [];
+const particles = []; // Particle system for effects
+const fogDensity = 200; // Number of fog particles
+const fogParticles = [];
 
 // Initialize mushrooms
 for (let i = 0; i < NUM_MUSHROOMS; i++) {
     mushrooms.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        originalX: null, // Store initial position
-        originalY: null, // Store initial position
+        velocityX: 0, // Velocity for smooth movement
+        velocityY: 0,
         radius: 20 + Math.random() * 10,
         currentColor: { r: 255, g: 165, b: 0 },
         targetColor: { r: 255, g: 165, b: 0 },
@@ -21,8 +24,18 @@ for (let i = 0; i < NUM_MUSHROOMS; i++) {
         escapeSpeed: Math.random() * 2 + 1, // Random escape speed
         recoveryTimer: 0
     });
-    mushrooms[mushrooms.length - 1].originalX = mushrooms[mushrooms.length - 1].x;
-    mushrooms[mushrooms.length - 1].originalY = mushrooms[mushrooms.length - 1].y;
+}
+
+// Initialize fog particles
+for (let i = 0; i < fogDensity; i++) {
+    fogParticles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        opacity: Math.random() * 0.2 + 0.1,
+        size: Math.random() * 50 + 20,
+        velocityX: (Math.random() - 0.5) * 0.2,
+        velocityY: (Math.random() - 0.5) * 0.2
+    });
 }
 
 // Linear interpolation function
@@ -40,9 +53,20 @@ function updateMushroomColors() {
     });
 }
 
+// Update mushroom positions based on velocity
+function updateMushroomPositions() {
+    mushrooms.forEach(m => {
+        m.x += m.velocityX;
+        m.y += m.velocityY;
+
+        // Gradually reduce velocity to create inertia effect
+        m.velocityX *= 0.95;
+        m.velocityY *= 0.95;
+    });
+}
+
 // Draw mushrooms
 function drawMushrooms() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
     mushrooms.forEach(m => {
         ctx.beginPath();
         ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2);
@@ -67,52 +91,88 @@ canvas.addEventListener('mousemove', (e) => {
             m.targetColor = { r: 100, g: 50, b: 0 }; // Dim color
             m.recoveryTimer = 200; // Escape duration
 
-            // Neighboring mushrooms
-            mushrooms.forEach(neighbor => {
-                const nx = neighbor.x - m.x;
-                const ny = neighbor.y - m.y;
-                const neighborDistance = Math.sqrt(nx * nx + ny * ny);
-
-                if (neighborDistance < 150 && !neighbor.triggered) {
-                    neighbor.triggered = true;
-                    neighbor.targetColor = { r: 150, g: 100, b: 50 }; // Slightly dimmer
-                    neighbor.recoveryTimer = 200;
-
-                    // Escape direction for neighbors
-                    const escapeFactor = 1.5 / neighborDistance;
-                    neighbor.x += nx * neighbor.escapeSpeed * escapeFactor;
-                    neighbor.y += ny * neighbor.escapeSpeed * escapeFactor;
-                }
-            });
-
-            // Escape direction for triggered mushroom
+            // Set velocity for smooth escape
             const escapeFactor = 2 / distance; // Adjust escape factor
-            m.x += dx * m.escapeSpeed * escapeFactor;
-            m.y += dy * m.escapeSpeed * escapeFactor;
+            m.velocityX = dx * m.escapeSpeed * escapeFactor;
+            m.velocityY = dy * m.escapeSpeed * escapeFactor;
+
+            // Add particle effects
+            for (let i = 0; i < 20; i++) {
+                particles.push({
+                    x: m.x,
+                    y: m.y,
+                    velocityX: (Math.random() - 0.5) * 4,
+                    velocityY: (Math.random() - 0.5) * 4,
+                    opacity: 1,
+                    size: Math.random() * 5 + 2
+                });
+            }
         }
     });
 });
 
-// Recover mushrooms gradually
-function recoverMushrooms() {
-    mushrooms.forEach(m => {
-        if (m.triggered && m.recoveryTimer > 0) {
-            m.recoveryTimer--;
-        } else if (m.triggered && m.recoveryTimer === 0) {
-            // Restore original state
-            m.triggered = false;
-            m.targetColor = { r: 255, g: 165, b: 0 };
-            m.x = lerp(m.x, m.originalX, 0.1); // Gradually return
-            m.y = lerp(m.y, m.originalY, 0.1); // Gradually return
-        }
+// Update and draw particle effects
+function updateParticles() {
+    particles.forEach((p, index) => {
+        p.x += p.velocityX;
+        p.y += p.velocityY;
+        p.opacity -= 0.02; // Fade out particles
+
+        if (p.opacity <= 0) particles.splice(index, 1); // Remove faded particles
+    });
+}
+
+function drawParticles() {
+    particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
+        ctx.fill();
+        ctx.closePath();
+    });
+}
+
+// Update and draw fog particles
+function updateFog() {
+    fogParticles.forEach(f => {
+        f.x += f.velocityX;
+        f.y += f.velocityY;
+
+        // Wrap fog particles around screen
+        if (f.x < 0) f.x = canvas.width;
+        if (f.x > canvas.width) f.x = 0;
+        if (f.y < 0) f.y = canvas.height;
+        if (f.y > canvas.height) f.y = 0;
+    });
+}
+
+function drawFog() {
+    fogParticles.forEach(f => {
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${f.opacity})`;
+        ctx.fill();
+        ctx.closePath();
     });
 }
 
 // Animation loop
 function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw fog first for depth
+    updateFog();
+    drawFog();
+
+    // Update and draw mushrooms
     updateMushroomColors();
-    recoverMushrooms();
+    updateMushroomPositions();
     drawMushrooms();
+
+    // Update and draw particles
+    updateParticles();
+    drawParticles();
+
     requestAnimationFrame(animate);
 }
 
