@@ -3,23 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Under Watch</title>
+    <title>Mushroom Interaction</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             background: linear-gradient(120deg, #2c3e50, #4ca1af); /* Subtle gradient */
+            font-family: 'Courier New', Courier, monospace; /* 打字机风格 */
         }
         canvas {
             display: block;
+            filter: blur(0px); /* 初始模糊为 0 */
+            transition: filter 0.1s linear; /* 模糊平滑变化 */
         }
     </style>
 </head>
 <body>
-    <audio id="backgroundAudio" loop>
-        <source src="background.mp3" type="audio/mp3">
-        Your browser does not support the audio tag.
-    </audio>
     <canvas id="mushroomCanvas"></canvas>
     <script src="script.js"></script>
 </body>
